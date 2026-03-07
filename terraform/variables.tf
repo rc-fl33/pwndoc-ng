@@ -80,3 +80,9 @@ variable "git_branch" {
   type        = string
   default     = "main"
 }
+
+variable "environment" {
+  description = "Deployment environment (e.g. prod, staging, dev)"
+  type        = string
+  default     = "prod"
+}

@@ -21,6 +21,9 @@ ebs_volume_size = 20
 git_repo_url = "https://github.com/pwndoc-ng/pwndoc-ng.git"
 git_branch   = "main"
 
+# Environment tag
+environment = "prod"
+
 # Optional: Domain (requires Route 53 hosted zone)
 # domain_name     = "pwndoc.example.com"
 # route53_zone_id = "Z1234567890"

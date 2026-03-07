@@ -74,6 +74,12 @@ Parameters:
     Default: ''
     Description: Route 53 hosted zone ID (required if DomainName is set)
 
+  Environment:
+    Type: String
+    Default: prod
+    AllowedValues: [prod, staging, dev]
+    Description: Deployment environment
+
 # =============================================================================
 # Conditions
 # =============================================================================
@@ -117,6 +123,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-vpc'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   InternetGateway:
     Type: AWS::EC2::InternetGateway
@@ -124,6 +136,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-igw'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   GatewayAttachment:
     Type: AWS::EC2::VPCGatewayAttachment
@@ -141,6 +159,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-public'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   PublicRouteTable:
     Type: AWS::EC2::RouteTable
@@ -149,6 +173,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-public-rt'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   PublicRoute:
     Type: AWS::EC2::Route
@@ -188,6 +218,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-app-sg'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- EBS Volume for MongoDB ---
   MongoDataVolume:
@@ -202,6 +238,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-mongo-data'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- EC2 Instance ---
   AppInstance:
@@ -225,6 +267,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-app'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -381,11 +429,26 @@ Resources:
       Tags:
         - Key: Name
           Value: !Sub '${AWS::StackName}-eip'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
 
   # --- DLM Backup Policy ---
   DLMRole:
     Type: AWS::IAM::Role
     Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-dlm-role'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -399,6 +462,15 @@ Resources:
   DLMLifecyclePolicy:
     Type: AWS::DLM::LifecyclePolicy
     Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-mongo-backup-policy'
+        - Key: Project
+          Value: pwndoc-ng
+        - Key: ManagedBy
+          Value: cloudformation
+        - Key: Environment
+          Value: !Ref Environment
       Description: Daily EBS snapshots for MongoDB data
       State: ENABLED
       ExecutionRoleArn: !GetAtt DLMRole.Arn

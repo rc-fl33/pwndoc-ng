@@ -13,6 +13,10 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   dimensions = {
     InstanceId = aws_instance.app.id
   }
+
+  tags = {
+    Name = "${var.project_name}-cpu-high"
+  }
 }
 
 resource "aws_cloudwatch_metric_alarm" "status_check" {
@@ -28,5 +32,9 @@ resource "aws_cloudwatch_metric_alarm" "status_check" {
 
   dimensions = {
     InstanceId = aws_instance.app.id
+  }
+
+  tags = {
+    Name = "${var.project_name}-status-check"
   }
 }

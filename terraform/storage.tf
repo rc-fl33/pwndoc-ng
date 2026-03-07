@@ -21,6 +21,10 @@ resource "aws_dlm_lifecycle_policy" "mongo_backup" {
   execution_role_arn = aws_iam_role.dlm.arn
   state              = "ENABLED"
 
+  tags = {
+    Name = "${var.project_name}-mongo-backup-policy"
+  }
+
   policy_details {
     resource_types = ["VOLUME"]
 
@@ -44,6 +48,8 @@ resource "aws_dlm_lifecycle_policy" "mongo_backup" {
       tags_to_add = {
         SnapshotCreator = "DLM"
         Project         = var.project_name
+        Environment     = var.environment
+        ManagedBy       = "terraform"
       }
 
       copy_tags = true
@@ -53,6 +59,10 @@ resource "aws_dlm_lifecycle_policy" "mongo_backup" {
 
 resource "aws_iam_role" "dlm" {
   name_prefix = "${var.project_name}-dlm-"
+
+  tags = {
+    Name = "${var.project_name}-dlm-role"
+  }
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
