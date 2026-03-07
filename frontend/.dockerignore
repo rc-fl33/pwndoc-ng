@@ -1,3 +1,9 @@
 node_modules
 dist
 .quasar
+npm-debug.log*
+.git
+.gitignore
+*.md
+.vscode
+.idea

@@ -4,9 +4,10 @@ var https = require('https').Server({
   key: fs.readFileSync(__dirname+'/../ssl/server.key'),
   cert: fs.readFileSync(__dirname+'/../ssl/server.cert')
 }, app);
+var config = require('./config/env');
 var io = require('socket.io')(https, {
   cors: {
-    origin: "*"
+    origin: config.corsOrigin === '*' ? true : config.corsOrigin.split(',')
   }
 })
 var bodyParser = require('body-parser');
@@ -18,20 +19,20 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./config/swagger-output.json');
 
 
-
-// Get configuration
-var env = process.env.NODE_ENV || 'dev';
-var config = require('./config/config.json')[env];
 global.__basedir = __dirname;
 
 // Database connection
 var mongoose = require('mongoose');
-// Use native promises
 mongoose.Promise = global.Promise;
-// Trim all Strings
 mongoose.Schema.Types.String.set('trim', true);
 
-mongoose.connect(`mongodb://${config.database.server}:${config.database.port}/${config.database.name}`, {});
+var mongoUri;
+if (config.database.username && config.database.password) {
+  mongoUri = `mongodb://${encodeURIComponent(config.database.username)}:${encodeURIComponent(config.database.password)}@${config.database.server}:${config.database.port}/${config.database.name}?authSource=admin`;
+} else {
+  mongoUri = `mongodb://${config.database.server}:${config.database.port}/${config.database.name}`;
+}
+mongoose.connect(mongoUri, {});
 
 // Models import
 require('./models/user');
@@ -89,21 +90,39 @@ io.on('connection', (socket) => {
 
 // CORS
 app.use(function(req, res, next) {
-  // res.header("Access-Control-Allow-Origin", req.headers.origin);
+  var origin = config.corsOrigin;
+  if (origin !== '*') {
+    var allowed = origin.split(',').map(s => s.trim());
+    if (allowed.includes(req.headers.origin)) {
+      res.header("Access-Control-Allow-Origin", req.headers.origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+  }
   res.header("Access-Control-Allow-Methods", "GET,POST,DELETE,PUT,OPTIONS");
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
   res.header('Access-Control-Expose-Headers', 'Content-Disposition')
-  // res.header('Access-Control-Allow-Credentials', 'true')
   next();
 });
 
-app.use(bodyParser.json({limit: '100mb'}));
+app.use(bodyParser.json({limit: config.bodyLimit}));
 app.use(bodyParser.urlencoded({
   limit: '10mb',
-  extended: false // do not need to take care about images, videos -> false: only strings
+  extended: false
 }));
 
 app.use(cookieParser())
+
+// Health check endpoint
+app.get("/api/health", function(req, res) {
+  var dbState = mongoose.connection.readyState;
+  var status = dbState === 1 ? 'healthy' : 'unhealthy';
+  var code = dbState === 1 ? 200 : 503;
+  res.status(code).json({
+    status: status,
+    database: dbState === 1 ? 'connected' : 'disconnected',
+    uptime: process.uptime()
+  });
+});
 
 // Routes import
 require('./routes/user')(app);
@@ -126,7 +145,7 @@ var Audit = require('mongoose').model('Audit');
 
 
   const serverHocus = hocus.Server.configure({
-    port:  process.env.COLLAB_WEBSOCKET_PORT || 8440,
+    port: config.collabPort,
       onUpgrade(data) {
         return new Promise( async (resolve, reject) =>  {
           const { request, socket, head } = data
@@ -152,7 +171,7 @@ var Audit = require('mongoose').model('Audit');
             }
           })
           if(!waitProcess){
-            reject() 
+            reject()
           }
         })
       }
@@ -171,5 +190,26 @@ app.get("*", function(req, res) {
 
 // Start server
 https.listen(config.port, config.host)
+console.log(`Server started on port ${config.port}`)
+
+// Graceful shutdown
+function gracefulShutdown(signal) {
+  console.log(`${signal} received. Shutting down gracefully...`);
+  https.close(() => {
+    console.log('HTTP server closed');
+    serverHocus.destroy();
+    mongoose.connection.close(false).then(() => {
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    });
+  });
+  setTimeout(() => {
+    console.error('Forced shutdown after timeout');
+    process.exit(1);
+  }, 10000);
+}
+
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 module.exports = app;

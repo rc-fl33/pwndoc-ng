@@ -1,0 +1,26 @@
+# AWS Configuration
+aws_region    = "us-east-1"
+instance_type = "t3.small"
+
+# SSH — must match an existing EC2 key pair
+ssh_key_name     = "my-key-pair"
+ssh_allowed_cidr = "YOUR_IP/32"  # Restrict SSH to your IP
+
+# MongoDB
+mongo_root_password = "CHANGE_ME_ROOT_PASSWORD"
+mongo_app_password  = "CHANGE_ME_APP_PASSWORD"
+
+# JWT Secrets — generate with: openssl rand -hex 32
+jwt_secret         = ""
+jwt_refresh_secret = ""
+
+# EBS Volume
+ebs_volume_size = 20
+
+# Git
+git_repo_url = "https://github.com/pwndoc-ng/pwndoc-ng.git"
+git_branch   = "main"
+
+# Optional: Domain (requires Route 53 hosted zone)
+# domain_name     = "pwndoc.example.com"
+# route53_zone_id = "Z1234567890"

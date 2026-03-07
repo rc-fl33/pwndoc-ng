@@ -1,24 +1,17 @@
-// Dynamic generation of JWT Secret if not exist (different for each environnment)
-var fs = require('fs')
-var env = process.env.NODE_ENV || 'dev'
-var config = require('../config/config.json')
+// JWT Secret management with env var support
+var crypto = require('crypto')
+var config = require('../config/env')
 
-if (!config[env].jwtSecret) {
-    config[env].jwtSecret = require('crypto').randomBytes(32).toString('hex')
-    var configString = JSON.stringify(config, null, 4)
-    fs.writeFileSync(`${__basedir}/config/config.json`, configString)
-}
-if (!config[env].jwtRefreshSecret) {
-    config[env].jwtRefreshSecret = require('crypto').randomBytes(32).toString('hex')
-    var configString = JSON.stringify(config, null, 4)
-    fs.writeFileSync(`${__basedir}/config/config.json`, configString)
-}
-
-var jwtSecret = config[env].jwtSecret
+// Use env var if provided, otherwise auto-generate (volatile — restarting without env var rotates tokens)
+var jwtSecret = config.jwtSecret || crypto.randomBytes(32).toString('hex')
 exports.jwtSecret = jwtSecret
 
-var jwtRefreshSecret = config[env].jwtRefreshSecret
+var jwtRefreshSecret = config.jwtRefreshSecret || crypto.randomBytes(32).toString('hex')
 exports.jwtRefreshSecret = jwtRefreshSecret
+
+if (!config.jwtSecret || !config.jwtRefreshSecret) {
+    console.warn('WARNING: JWT secrets not set via environment variables. Auto-generated secrets will not persist across restarts.')
+}
 
 /*  ROLES LOGIC
 
@@ -126,13 +119,13 @@ class ACL {
                 Response.Unauthorized(res, 'No token provided')
                 return;
             }
-    
+
             var cookie = req.cookies['token'].split(' ')
             if (cookie.length !== 2 || cookie[0] !== 'JWT') {
                 Response.Unauthorized(res, 'Bad token type')
                 return
             }
-    
+
             var token = cookie[1]
             jwt.verify(token, jwtSecret, (err, decoded) => {
                 if (err) {
@@ -142,7 +135,7 @@ class ACL {
                         Response.Unauthorized(res, 'Invalid token')
                     return
                 }
-                
+
                 if ( permission === "validtoken" || this.isAllowed(decoded.role, permission)) {
                     req.decodedToken = decoded
                     return next()
@@ -188,7 +181,7 @@ class ACL {
 
         if (result.includes('*'))
             return '*'
-        
+
         return result
     }
 }

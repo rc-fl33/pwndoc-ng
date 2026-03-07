@@ -1,0 +1,90 @@
+version: '3.8'
+services:
+  mongodb:
+    image: mongo:6
+    container_name: mongo-pwndoc-ng
+    volumes:
+      - mongo-data:/data/db
+    restart: always
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-root}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD:?Set MONGO_INITDB_ROOT_PASSWORD in .env}
+      - MONGO_INITDB_DATABASE=${MONGO_DB_NAME:-pwndoc}
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  backend:
+    build: ./backend
+    image: pwndoc-ng/pwndoc-ng:backend
+    container_name: pwndoc-ng-backend
+    volumes:
+      - ./backend/report-templates:/app/report-templates
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=prod
+      - APP_PORT=${APP_PORT:-4242}
+      - COLLAB_WEBSOCKET_PORT=${COLLAB_WEBSOCKET_PORT:-8440}
+      - MONGO_HOST=${MONGO_HOST:-mongo-pwndoc-ng}
+      - MONGO_PORT=${MONGO_PORT:-27017}
+      - MONGO_DB_NAME=${MONGO_DB_NAME:-pwndoc}
+      - MONGO_USERNAME=${MONGO_USERNAME:-pwndoc}
+      - MONGO_PASSWORD=${MONGO_PASSWORD:?Set MONGO_PASSWORD in .env}
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in .env}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:?Set JWT_REFRESH_SECRET in .env}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - BODY_LIMIT=${BODY_LIMIT:-20mb}
+      - APIDOC=${APIDOC:-false}
+    restart: always
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+
+  frontend:
+    build: ./frontend
+    image: pwndoc-ng/pwndoc-ng:frontend
+    container_name: pwndoc-ng-frontend
+    restart: always
+    ports:
+      - "443:8443"
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+
+  languagetool:
+    image: erikvl87/languagetool
+    container_name: pwndoc-ng-languagetool
+    restart: always
+    environment:
+      - Java_Xms=256m
+      - Java_Xmx=1g
+    networks:
+      - backend
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+
+volumes:
+  mongo-data:
+
+networks:
+  backend:
+    driver: bridge

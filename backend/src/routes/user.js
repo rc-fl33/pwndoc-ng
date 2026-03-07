@@ -7,7 +7,16 @@ module.exports = function(app) {
     var jwt = require('jsonwebtoken')
     var _ = require('lodash')
     var passwordpolicy = require('../lib/passwordpolicy')
-	
+    var rateLimit = require('express-rate-limit')
+
+    var loginLimiter = rateLimit({
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 20, // 20 attempts per window
+        message: {status: 'error', data: 'Too many login attempts, please try again later'},
+        standardHeaders: true,
+        legacyHeaders: false,
+    });
+
     // Check token validity
     app.get("/api/users/checktoken", acl.hasPermission('validtoken'), function(req, res) {
         // #swagger.tags = ['User']
@@ -64,7 +73,7 @@ module.exports = function(app) {
     });
 
     // Authenticate user -> return JWT token
-    app.post("/api/users/token", function(req, res) {
+    app.post("/api/users/token", loginLimiter, function(req, res) {
         // #swagger.tags = ['User']
 
         if (!req.body.password || !req.body.username) {
@@ -287,7 +296,7 @@ module.exports = function(app) {
             Response.BadParameters(res, 'Missing some required parameters');
             return;
         }
-        if (req.body.newPassword && req.body.newPassword.length==0 && passwordpolicy.strongPassword(req.body.newPassword)!==true){
+        if (req.body.newPassword && req.body.newPassword.length > 0 && passwordpolicy.strongPassword(req.body.newPassword)!==true){
             Response.BadParameters(res, 'New Password does not match the password policy');
             return;
         }
